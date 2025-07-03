@@ -1,372 +1,308 @@
-import { API_BASE_URL } from "./config";
+import axios from 'axios';
+import { API_BASE_URL, API_ENDPOINTS } from "./config";
 
-// API Service for connecting frontend with backend
+// Create axios instance with default configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
+// Request interceptor to add auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// API Service class using axios
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.client = apiClient;
   }
 
-  // Helper method to get auth token from cookies
-  getAuthToken() {
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('authToken='))
-      ?.split('=')[1];
-    return token;
-  }
-
-  // Helper method to get headers with authentication
-  getHeaders(includeAuth = true) {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-
-    if (includeAuth) {
-      const token = this.getAuthToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  // Generic request method
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      headers: this.getHeaders(options.includeAuth !== false),
-      ...options,
-    };
-
+  // Helper method to handle form data requests
+  async requestFormData(endpoint, formData, config = {}) {
     try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      const response = await this.client.post(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        ...config,
+      });
+      return response.data;
     } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
+      throw this.handleError(error);
     }
   }
 
-  // Authentication endpoints
-  auth = {
-    // Login user
-    loginUser: async (email, password) => {
-      return this.request('/auth/login-user', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-        includeAuth: false,
+  // Helper method to handle URL encoded requests
+  async requestUrlEncoded(endpoint, data, method = 'POST', config = {}) {
+    try {
+      const response = await this.client.request({
+        method,
+        url: endpoint,
+        data: new URLSearchParams(data),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        ...config,
       });
-    },
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Login admin
-    loginAdmin: async (email, password) => {
-      return this.request('/auth/login-admin', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-        includeAuth: false,
-      });
-    },
+  // Error handler
+  handleError(error) {
+    if (error.response) {
+      // Server responded with error status
+      const message = error.response.data?.message || error.response.statusText || 'Server error';
+      throw new Error(message);
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('Network error - please check your connection');
+    } else {
+      // Something else happened
+      throw new Error(error.message || 'An unexpected error occurred');
+    }
+  }
 
-    // Register user
-    registerUser: async (userData) => {
-      return this.request('/auth/register-user', {
-        method: 'POST',
-        body: JSON.stringify(userData),
-        includeAuth: false,
-      });
-    },
+  // Authentication methods
+  async registerUser(userData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.REGISTER_USER, userData);
+  }
 
-    // Register admin
-    registerAdmin: async (adminData) => {
-      return this.request('/auth/register-admin', {
-        method: 'POST',
-        body: JSON.stringify(adminData),
-        includeAuth: false,
-      });
-    },
+  async registerAdmin(adminData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.REGISTER_ADMIN, adminData);
+  }
 
-    // Forgot password
-    forgotPassword: async (email) => {
-      return this.request('/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-        includeAuth: false,
-      });
-    },
+  async loginUser(credentials) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.LOGIN_USER, credentials);
+  }
 
-    // Verify reset code
-    verifyResetCode: async (email, code) => {
-      return this.request('/auth/verify-reset-code', {
-        method: 'POST',
-        body: JSON.stringify({ email, code }),
-        includeAuth: false,
-      });
-    },
+  async loginAdmin(credentials) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.LOGIN_ADMIN, credentials);
+  }
 
-    // Reset password
-    resetPassword: async (email, code, newPassword) => {
-      return this.request('/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ email, code, newPassword }),
-        includeAuth: false,
-      });
-    },
-  };
+  async forgotPassword(email) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
+  }
 
-  // User endpoints
-  user = {
-    // Get user profile
-    getProfile: async () => {
-      return this.request('/user/profile');
-    },
+  async verifyResetCode(email, code) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.VERIFY_RESET_CODE, { email, code });
+  }
 
-    // Get admin profile
-    getAdminProfile: async () => {
-      return this.request('/user/admin/profile');
-    },
+  async resetPassword(email, code, newPassword) {
+    return this.requestUrlEncoded(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+      email,
+      code,
+      newPassword
+    });
+  }
 
-    // Get all users (admin only)
-    getAllUsers: async () => {
-      return this.request('/user');
-    },
+  // User profile methods
+  async getProfile() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.USER.PROFILE);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Create user
-    createUser: async (userData) => {
-      return this.request('/user', {
-        method: 'POST',
-        body: JSON.stringify(userData),
-      });
-    },
-  };
+  async getAdminProfile() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.USER.ADMIN_PROFILE);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // Course endpoints
-  course = {
-    // Get all courses
-    getAllCourses: async () => {
-      return this.request('/course');
-    },
+  // Major methods
+  async createMajor(majorData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.MAJOR.CREATE, majorData);
+  }
 
-    // Get course by ID
-    getCourse: async (id) => {
-      return this.request(`/course/${id}`);
-    },
+  async getAllMajors() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.MAJOR.GET_ALL);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Create course
-    createCourse: async (courseData) => {
-      return this.request('/course', {
-        method: 'POST',
-        body: JSON.stringify(courseData),
-      });
-    },
-  };
+  async getMajorById(id) {
+    try {
+      const response = await this.client.get(`${API_ENDPOINTS.MAJOR.GET_BY_ID}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // Major endpoints
-  major = {
-    // Get all majors
-    getAllMajors: async () => {
-      return this.request('/major');
-    },
+  // Level methods
+  async createLevel(levelData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.LEVEL.CREATE, levelData);
+  }
 
-    // Get major by ID
-    getMajor: async (id) => {
-      return this.request(`/major/${id}`);
-    },
+  async getAllLevels() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.LEVEL.GET_ALL);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Create major
-    createMajor: async (majorData) => {
-      return this.request('/major', {
-        method: 'POST',
-        body: JSON.stringify(majorData),
-      });
-    },
-  };
+  async getLevelById(id) {
+    try {
+      const response = await this.client.get(`${API_ENDPOINTS.LEVEL.GET_BY_ID}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // Level endpoints
-  level = {
-    // Get all levels
-    getAllLevels: async () => {
-      return this.request('/level');
-    },
+  // Sub Major methods
+  async createSubMajor(subMajorData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.SUB_MAJOR.CREATE, subMajorData);
+  }
 
-    // Get level by ID
-    getLevel: async (id) => {
-      return this.request(`/level/${id}`);
-    },
+  async getAllSubMajors() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.SUB_MAJOR.GET_ALL);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Create level
-    createLevel: async (levelData) => {
-      return this.request('/level', {
-        method: 'POST',
-        body: JSON.stringify(levelData),
-      });
-    },
-  };
+  async getSubMajorById(id) {
+    try {
+      const response = await this.client.get(`${API_ENDPOINTS.SUB_MAJOR.GET_BY_ID}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // Sub-major endpoints
-  subMajor = {
-    // Get all sub-majors
-    getAllSubMajors: async () => {
-      return this.request('/sub-major');
-    },
+  // Course methods
+  async createCourse(courseData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.COURSE.CREATE, courseData);
+  }
 
-    // Get sub-major by ID
-    getSubMajor: async (id) => {
-      return this.request(`/sub-major/${id}`);
-    },
+  async getAllCourses() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.COURSE.GET_ALL);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Create sub-major
-    createSubMajor: async (subMajorData) => {
-      return this.request('/sub-major', {
-        method: 'POST',
-        body: JSON.stringify(subMajorData),
-      });
-    },
-  };
+  async getCourseById(id) {
+    try {
+      const response = await this.client.get(`${API_ENDPOINTS.COURSE.GET_BY_ID}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // Material endpoints
-  material = {
-    // Get all materials
-    getAllMaterials: async () => {
-      return this.request('/material');
-    },
+  // Event methods
+  async createEvent(eventData) {
+    return this.requestFormData(API_ENDPOINTS.EVENT.CREATE, eventData);
+  }
 
-    // Get material by ID
-    getMaterial: async (id) => {
-      return this.request(`/material/${id}`);
-    },
+  async getAllEvents(queryParams = {}) {
+    try {
+      const params = new URLSearchParams(queryParams);
+      const response = await this.client.get(`${API_ENDPOINTS.EVENT.GET_ALL}?${params}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Create material
-    createMaterial: async (materialData) => {
-      return this.request('/material', {
-        method: 'POST',
-        body: JSON.stringify(materialData),
-      });
-    },
-  };
+  async getEventById(id) {
+    try {
+      const response = await this.client.get(`${API_ENDPOINTS.EVENT.GET_BY_ID}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // FCI Event endpoints
-  event = {
-    // Get all events
-    getAllEvents: async () => {
-      return this.request('/fci-event');
-    },
+  async deleteEvent(id) {
+    try {
+      const response = await this.client.delete(`${API_ENDPOINTS.EVENT.DELETE}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Get event by ID
-    getEvent: async (id) => {
-      return this.request(`/fci-event/${id}`);
-    },
+  // Lecture Time methods
+  async createLectureTime(lectureData) {
+    return this.requestUrlEncoded(API_ENDPOINTS.LECTURE_TIME.CREATE, lectureData);
+  }
 
-    // Create event
-    createEvent: async (eventData) => {
-      return this.request('/fci-event', {
-        method: 'POST',
-        body: JSON.stringify(eventData),
-      });
-    },
+  async getAllLectureTimes() {
+    try {
+      const response = await this.client.get(API_ENDPOINTS.LECTURE_TIME.GET_ALL);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-    // Filter events
-    filterEvents: async (filterData) => {
-      return this.request('/fci-event/filter', {
-        method: 'POST',
-        body: JSON.stringify(filterData),
-      });
-    },
-  };
+  async getLectureTimeById(id) {
+    try {
+      const response = await this.client.get(`${API_ENDPOINTS.LECTURE_TIME.GET_BY_ID}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-  // Lecture time endpoints
-  lectureTime = {
-    // Get all lecture times
-    getAllLectureTimes: async () => {
-      return this.request('/lecture-time');
-    },
+  async updateLectureTime(id, lectureData) {
+    return this.requestUrlEncoded(`${API_ENDPOINTS.LECTURE_TIME.UPDATE}/${id}`, lectureData, 'PUT');
+  }
 
-    // Get lecture time by ID
-    getLectureTime: async (id) => {
-      return this.request(`/lecture-time/${id}`);
-    },
-
-    // Create lecture time
-    createLectureTime: async (lectureTimeData) => {
-      return this.request('/lecture-time', {
-        method: 'POST',
-        body: JSON.stringify(lectureTimeData),
-      });
-    },
-  };
-
-  // Section time endpoints
-  sectionTime = {
-    // Get all section times
-    getAllSectionTimes: async () => {
-      return this.request('/section-time');
-    },
-
-    // Get section time by ID
-    getSectionTime: async (id) => {
-      return this.request(`/section-time/${id}`);
-    },
-
-    // Create section time
-    createSectionTime: async (sectionTimeData) => {
-      return this.request('/section-time', {
-        method: 'POST',
-        body: JSON.stringify(sectionTimeData),
-      });
-    },
-  };
-
-  // Dropbox endpoints
-  dropbox = {
-    // Upload file
-    uploadFile: async (file, path = '/') => {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', path);
-
-      return this.request('/dropbox/upload', {
-        method: 'POST',
-        body: formData,
-        headers: {}, // Let browser set content-type for FormData
-      });
-    },
-
-    // Get file list
-    getFileList: async (path = '/') => {
-      return this.request(`/dropbox/list?path=${encodeURIComponent(path)}`);
-    },
-
-    // Download file
-    downloadFile: async (path) => {
-      return this.request(`/dropbox/download?path=${encodeURIComponent(path)}`);
-    },
-
-    // Delete file
-    deleteFile: async (path) => {
-      return this.request('/dropbox/delete', {
-        method: 'DELETE',
-        body: JSON.stringify({ path }),
-      });
-    },
-  };
-
-  // Mail endpoints
-  mail = {
-    // Send email
-    sendEmail: async (emailData) => {
-      return this.request('/mail/send', {
-        method: 'POST',
-        body: JSON.stringify(emailData),
-      });
-    },
-  };
+  async deleteLectureTime(id) {
+    try {
+      const response = await this.client.delete(`${API_ENDPOINTS.LECTURE_TIME.DELETE}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 }
 
 // Create and export a singleton instance

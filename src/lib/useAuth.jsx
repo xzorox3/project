@@ -48,11 +48,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, userType = 'admin') => {
     try {
-      const loginMethod = userType === 'admin' 
-        ? apiService.auth.loginAdmin 
-        : apiService.auth.loginUser;
+      const loginMethod = userType === 'admin'
+        ? apiService.loginAdmin
+        : apiService.loginUser;
 
-      const data = await loginMethod(email, password);
+      const data = await loginMethod({ email, password });
 
       // Store authentication data
       if (data.token) {
@@ -93,9 +93,9 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData, userType = 'user') => {
     try {
-      const registerMethod = userType === 'admin' 
-        ? apiService.auth.registerAdmin 
-        : apiService.auth.registerUser;
+      const registerMethod = userType === 'admin'
+        ? apiService.registerAdmin
+        : apiService.registerUser;
 
       const data = await registerMethod(userData);
       return { success: true, data };
@@ -121,9 +121,9 @@ export const AuthProvider = ({ children }) => {
     try {
       if (!isAuthenticated) return;
 
-      const profileMethod = isAdmin 
-        ? apiService.user.getAdminProfile 
-        : apiService.user.getProfile;
+      const profileMethod = isAdmin
+        ? apiService.getAdminProfile
+        : apiService.getProfile;
 
       const data = await profileMethod();
       
@@ -145,7 +145,7 @@ export const AuthProvider = ({ children }) => {
 
   const forgotPassword = async (email) => {
     try {
-      const data = await apiService.auth.forgotPassword(email);
+      const data = await apiService.forgotPassword(email);
       return { success: true, data };
     } catch (error) {
       console.error('Forgot password error:', error);
@@ -155,7 +155,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyResetCode = async (email, code) => {
     try {
-      const data = await apiService.auth.verifyResetCode(email, code);
+      const data = await apiService.verifyResetCode(email, code);
       return { success: true, data };
     } catch (error) {
       console.error('Verify reset code error:', error);
@@ -165,7 +165,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (email, code, newPassword) => {
     try {
-      const data = await apiService.auth.resetPassword(email, code, newPassword);
+      const data = await apiService.resetPassword(email, code, newPassword);
       return { success: true, data };
     } catch (error) {
       console.error('Reset password error:', error);

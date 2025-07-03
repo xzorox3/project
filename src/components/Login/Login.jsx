@@ -16,7 +16,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import loginimage from "../../assets/image/loginimage.svg";
-import { API_BASE_URL } from "../../lib/config";
+import apiService from "../../lib/api";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -37,84 +37,71 @@ const Login = () => {
     initialValues: {
       email: "mohd@gmail.com",
       password: "123456",
-      role: "Doctor", // default role
+      role: "Student", // default role
     },
     validationSchema,
     onSubmit: async (values, { setSubmitting, setStatus }) => {
       try {
         setStatus(null);
 
-        const endpoint = values.role === "Admin"
-          ? "/api/auth/login-doctor"
-          : "/api/auth/login-admin";
+        // Use the appropriate API method based on role
+        const loginMethod = values.role === "Teacher"
+          ? apiService.loginAdmin
+          : apiService.loginUser;
 
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: values.email,
-            password: values.password,
-            role: values.role, // send role
-          }),
+        const data = await loginMethod({
+          email: values.email,
+          password: values.password,
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Login successful:", data);
+        console.log("Login successful:", data);
 
-          // Store token and user data in cookies
-          if (data.token) {
-            localStorage.setItem("token", data.token);
-            // Set token cookie with 7 days expiration and secure options
-            Cookies.set("authToken", data.token, {
-              expires: 7, // 7 days
-              secure: import.meta.env.PROD, // Only use secure in production
-              sameSite: "strict", // CSRF protection
-              path: "/", // Available throughout the app
-            });
-          }
-
-          if (data.user) {
-            // Store user data in cookie
-            Cookies.set("user", JSON.stringify(data.user), {
-              expires: 7,
-              secure: import.meta.env.PROD,
-              sameSite: "strict",
-              path: "/",
-            });
-
-            // Set user role for admin access
-            Cookies.set("userRole", data.user.role, {
-              expires: 7,
-              secure: import.meta.env.PROD,
-              sameSite: "strict",
-              path: "/",
-            });
-          }
-
-          // Show success message briefly before redirect
-          setStatus("Login successful! Redirecting...");
-
-          // Redirect to dashboard or home page after a brief delay
-          setTimeout(() => {
-            // Redirect based on selected role
-            if (values.role === "Admin") {
-              navigate("/admin");
-            } else {
-              navigate("/profile");
-            }
-          }, 1000);
-        } else {
-          const errorData = await response.json();
-          setStatus(
-            errorData.message || "Invalid email or password. Please try again."
-          );
+        // Store token and user data
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+          // Set token cookie with 7 days expiration and secure options
+          Cookies.set("authToken", data.token, {
+            expires: 7, // 7 days
+            secure: import.meta.env.PROD, // Only use secure in production
+            sameSite: "strict", // CSRF protection
+            path: "/", // Available throughout the app
+          });
         }
+
+        if (data.user || data.userData) {
+          const userData = data.user || data.userData;
+          // Store user data in cookie
+          Cookies.set("user", JSON.stringify(userData), {
+            expires: 7,
+            secure: import.meta.env.PROD,
+            sameSite: "strict",
+            path: "/",
+          });
+
+          // Set user role for admin access
+          Cookies.set("userRole", userData.role || values.role, {
+            expires: 7,
+            secure: import.meta.env.PROD,
+            sameSite: "strict",
+            path: "/",
+          });
+        }
+
+        // Show success message briefly before redirect
+        setStatus("Login successful! Redirecting...");
+
+        // Redirect to dashboard or home page after a brief delay
+        setTimeout(() => {
+          // Redirect based on selected role
+          if (values.role === "Teacher") {
+            navigate("/admin");
+          } else {
+            navigate("/profile");
+          }
+        }, 1000);
       } catch (error) {
         console.error("Login error:", error);
-        setStatus("Network error. Please check your connection and try again.");
+        setStatus(error.message || "Invalid email or password. Please try again.");
       } finally {
         setSubmitting(false);
       }
@@ -124,16 +111,16 @@ const Login = () => {
   // Role options for card selection
   const roleOptions = [
     {
-      value: "Doctor",
-      label: "Professor",
-      description: "Manage lectures, upload materials, monitor and communicate with students.",
-      icon: <User className="w-6 h-6" />,
+      value: "Student",
+      label: "Student",
+      description: "Access lectures, download materials, view schedules and communicate with teachers.",
+      icon: <GraduationCap className="w-6 h-6" />,
     },
     {
-      value: "Admin",
-      label: "System Admin",
-      description: "System management, user supervision, content and settings review.",
-      icon: <Shield className="w-6 h-6" />,
+      value: "Teacher",
+      label: "Teacher",
+      description: "Manage lectures, upload materials, monitor and communicate with students.",
+      icon: <User className="w-6 h-6" />,
     },
   ];
 
