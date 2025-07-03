@@ -1,0 +1,355 @@
+{
+  "apiDocumentation": {
+    "title": "FCI Hub API Reference",
+    "version": "1.0.0",
+    "baseUrl": "https://fcihub.onrender.com",
+    "description": "Complete API reference for the FCI Hub backend services",
+    "authentication": {
+      "type": "Bearer Token",
+      "description": "Include the token in the Authorization header: 'Bearer {token}'"
+    },
+    "endpoints": {
+      "authentication": {
+        "registerUser": {
+          "method": "POST",
+          "endpoint": "/auth/register-user",
+          "description": "Register a new student",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "name": { "type": "string", "required": true, "example": "سيرا" },
+            "gender": { "type": "string", "required": true, "example": "انثي" },
+            "collage": { "type": "string", "required": true, "example": "حاسبات و معلومات" },
+            "university": { "type": "string", "required": true, "example": "قناه السويس" },
+            "GPA": { "type": "string", "required": true, "example": "3.2" },
+            "email": { "type": "string", "required": true, "example": "sira3@gmail.com" },
+            "password": { "type": "string", "required": true, "example": "123" },
+            "level": { "type": "string", "required": true, "example": "1" },
+            "major": { "type": "string", "required": true, "example": "computer science" }
+          }
+        },
+        "registerAdmin": {
+          "method": "POST",
+          "endpoint": "/auth/register-admin",
+          "description": "Register a new admin/teacher",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "name": { "type": "string", "required": true, "example": "دكتور حسن" },
+            "email": { "type": "string", "required": true, "example": "hassan@gmail.com" },
+            "gender": { "type": "string", "required": true, "example": "ذكر" },
+            "password": { "type": "string", "required": true, "example": "1234" }
+          }
+        },
+        "loginUser": {
+          "method": "POST",
+          "endpoint": "/auth/login-user",
+          "description": "Login as student",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "email": { "type": "string", "required": true, "example": "sira3@gmail.com" },
+            "password": { "type": "string", "required": true, "example": "123" }
+          },
+          "response": {
+            "token": "JWT token for authentication",
+            "user": "User data object"
+          }
+        },
+        "loginAdmin": {
+          "method": "POST",
+          "endpoint": "/auth/login-admin",
+          "description": "Login as admin/teacher",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "email": { "type": "string", "required": true, "example": "hassan@gmail.com" },
+            "password": { "type": "string", "required": true, "example": "1234" }
+          },
+          "response": {
+            "token": "JWT token for authentication",
+            "user": "User data object"
+          }
+        },
+        "forgotPassword": {
+          "method": "POST",
+          "endpoint": "/auth/forgot-password",
+          "description": "Request password reset",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "email": { "type": "string", "required": true, "example": "user@example.com" }
+          }
+        },
+        "verifyResetCode": {
+          "method": "POST",
+          "endpoint": "/auth/verify-reset-code",
+          "description": "Verify password reset code",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "email": { "type": "string", "required": true, "example": "user@example.com" },
+            "code": { "type": "string", "required": true, "example": "123456" }
+          }
+        },
+        "resetPassword": {
+          "method": "POST",
+          "endpoint": "/auth/reset-password",
+          "description": "Reset password with code",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": false,
+          "parameters": {
+            "email": { "type": "string", "required": true, "example": "user@example.com" },
+            "code": { "type": "string", "required": true, "example": "123456" },
+            "newPassword": { "type": "string", "required": true, "example": "newpassword123" }
+          }
+        }
+      },
+      "user": {
+        "getProfile": {
+          "method": "GET",
+          "endpoint": "/user/profile",
+          "description": "Get student profile data",
+          "requiresAuth": true,
+          "response": {
+            "userData": "Student profile information"
+          }
+        },
+        "getAdminProfile": {
+          "method": "GET",
+          "endpoint": "/user/admin/profile",
+          "description": "Get admin/teacher profile data",
+          "requiresAuth": true,
+          "response": {
+            "userData": "Admin profile information"
+          }
+        }
+      },
+      "major": {
+        "create": {
+          "method": "POST",
+          "endpoint": "/major",
+          "description": "Create a new major",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": true,
+          "parameters": {
+            "title": { "type": "string", "required": true, "example": "Software" }
+          }
+        },
+        "getAll": {
+          "method": "GET",
+          "endpoint": "/major",
+          "description": "Get all majors",
+          "requiresAuth": false
+        },
+        "getById": {
+          "method": "GET",
+          "endpoint": "/major/{id}",
+          "description": "Get major by ID",
+          "requiresAuth": false,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "1" }
+          }
+        }
+      },
+      "level": {
+        "create": {
+          "method": "POST",
+          "endpoint": "/level",
+          "description": "Create a new level",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": true,
+          "parameters": {
+            "levelNumber": { "type": "string", "required": true, "example": "4" },
+            "majorId": { "type": "string", "required": true, "example": "1" }
+          }
+        },
+        "getAll": {
+          "method": "GET",
+          "endpoint": "/level",
+          "description": "Get all levels related to major ID",
+          "requiresAuth": false
+        },
+        "getById": {
+          "method": "GET",
+          "endpoint": "/level/{id}",
+          "description": "Get level related to major",
+          "requiresAuth": false,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "1" }
+          }
+        }
+      },
+      "subMajor": {
+        "create": {
+          "method": "POST",
+          "endpoint": "/sub-major",
+          "description": "Create sub major related by level & major",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": true,
+          "parameters": {
+            "title": { "type": "string", "required": true, "example": "Computer Science" },
+            "levelId": { "type": "string", "required": true, "example": "12" }
+          }
+        },
+        "getAll": {
+          "method": "GET",
+          "endpoint": "/sub-major",
+          "description": "Get all sub majors",
+          "requiresAuth": false
+        },
+        "getById": {
+          "method": "GET",
+          "endpoint": "/sub-major/{id}",
+          "description": "Get sub major by ID",
+          "requiresAuth": false,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "1" }
+          }
+        }
+      },
+      "course": {
+        "create": {
+          "method": "POST",
+          "endpoint": "/course",
+          "description": "Create a new course",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": true,
+          "parameters": {
+            "title": { "type": "string", "required": true, "example": "programming" },
+            "levelId": { "type": "string", "required": true, "example": "9" },
+            "majorId": { "type": "string", "required": true, "example": "1" },
+            "subMajorId": { "type": "string", "required": false, "example": "1" }
+          }
+        },
+        "getAll": {
+          "method": "GET",
+          "endpoint": "/course",
+          "description": "Get all courses",
+          "requiresAuth": false
+        },
+        "getById": {
+          "method": "GET",
+          "endpoint": "/course/{id}",
+          "description": "Get course by ID",
+          "requiresAuth": false,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "1" }
+          }
+        }
+      },
+      "event": {
+        "create": {
+          "method": "POST",
+          "endpoint": "/event",
+          "description": "Add a new event",
+          "contentType": "multipart/form-data",
+          "requiresAuth": true,
+          "parameters": {
+            "title": { "type": "string", "required": true, "example": "new event" },
+            "description": { "type": "string", "required": true, "example": "Fci event" },
+            "date": { "type": "string", "required": true, "example": "10-5-2025" },
+            "image": { "type": "file", "required": true, "description": "Event image file" },
+            "type": { "type": "string", "required": true, "example": "FCI" }
+          }
+        },
+        "getAll": {
+          "method": "GET",
+          "endpoint": "/event",
+          "description": "Get all events with optional filters",
+          "requiresAuth": false,
+          "queryParameters": {
+            "title": { "type": "string", "required": false },
+            "description": { "type": "string", "required": false },
+            "type": { "type": "string", "required": false, "example": "FCI" },
+            "date": { "type": "string", "required": false }
+          }
+        },
+        "getById": {
+          "method": "GET",
+          "endpoint": "/event/{id}",
+          "description": "Get event by ID",
+          "requiresAuth": false,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "2" }
+          }
+        },
+        "delete": {
+          "method": "DELETE",
+          "endpoint": "/event/{id}",
+          "description": "Delete event",
+          "requiresAuth": true,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "1" }
+          }
+        }
+      },
+      "lectureTime": {
+        "create": {
+          "method": "POST",
+          "endpoint": "/lecture-time",
+          "description": "Create lecture time",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": true,
+          "parameters": {
+            "courseName": { "type": "string", "required": true, "example": "الحكومه الالكترونيه" },
+            "DoctorName": { "type": "string", "required": true, "example": "د/عمر سالم" },
+            "rangeTime": { "type": "string", "required": true, "example": "10:00 صباحًا - 12:00 ظهرًا" }
+          }
+        },
+        "getAll": {
+          "method": "GET",
+          "endpoint": "/lecture-time",
+          "description": "Get all lectures time",
+          "requiresAuth": false
+        },
+        "getById": {
+          "method": "GET",
+          "endpoint": "/lecture-time/{id}",
+          "description": "Get lecture time by ID",
+          "requiresAuth": false,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "3" }
+          }
+        },
+        "update": {
+          "method": "PUT",
+          "endpoint": "/lecture-time/{id}",
+          "description": "Update lecture time",
+          "contentType": "application/x-www-form-urlencoded",
+          "requiresAuth": true,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "2" },
+            "courseName": { "type": "string", "required": true, "example": " قواعد البيانات" },
+            "DoctorName": { "type": "string", "required": true, "example": "د/ اسامه فاروق" },
+            "rangeTime": { "type": "string", "required": true, "example": "1:00 ظهرًا - 3:00 عصرًا" }
+          }
+        },
+        "delete": {
+          "method": "DELETE",
+          "endpoint": "/lecture-time/{id}",
+          "description": "Delete lecture time",
+          "requiresAuth": true,
+          "parameters": {
+            "id": { "type": "string", "required": true, "example": "2" }
+          }
+        }
+      }
+    },
+    "usage": {
+      "environment": {
+        "description": "Set VITE_BACKEND_URL in your .env file",
+        "example": "VITE_BACKEND_URL=https://fcihub.onrender.com"
+      },
+      "apiService": {
+        "description": "Use the apiService instance from src/lib/api.jsx",
+        "examples": {
+          "login": "await apiService.auth.loginUser({ email, password })",
+          "getProfile": "await apiService.user.getProfile()",
+          "getAllCourses": "await apiService.course.getAll()",
+          "createEvent": "await apiService.event.create(formData)"
+        }
+      }
+    }
+  }
+}
